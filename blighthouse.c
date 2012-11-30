@@ -95,6 +95,10 @@ int main(int argc, char *argv[]) {
 		if (time_ssid && count == netc+time_ssid-1) {
 			t = time(NULL);
 			tmp = localtime(&t);
+			if (!tmp) {
+				perror("localtime");
+				exit(1);
+			}
 			strftime(network, 32, "%Y-%m-%d %H:%M", tmp);
 		} else {
 			strncpy(network, netp[count], 32);

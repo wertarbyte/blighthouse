@@ -60,8 +60,8 @@ int build_beacon(char *buf, char *essid) {
 int main(int argc, char *argv[]) {
 	char pcap_errbuf[PCAP_ERRBUF_SIZE];
 	pcap_errbuf[0] = '\0';
-	if (argc < 2) {
-		printf("No interface specified\n");
+	if (argc < 3) {
+		printf("Please specify interface and network names\n");
 		exit(1);
 	}
 	char *if_name = argv[1];
@@ -70,13 +70,17 @@ int main(int argc, char *argv[]) {
 		printf("%s\n", pcap_errbuf);
 		exit(1);
 	}
+	int netc = argc-2;
+	char **netp = argv+2;
 	char beacon[1024];
-	char *network = "meinnetz";
+	int count = 0;
 	while (1) {
+		char *network = netp[count++];
 		int buffersize = build_beacon(beacon, network);
 		int s = pcap_inject(pcap, beacon, buffersize);
 		printf("transmitted %d bytes of beacon data on %s for network '%s'\n", s, if_name, network);
 		usleep(1000);
+		if (count >= netc) count = 0;
 	}
 	pcap_close(pcap);
 	return 0;

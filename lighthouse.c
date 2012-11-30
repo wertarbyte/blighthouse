@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 		int buffersize = build_beacon(beacon, network);
 		int s = pcap_inject(pcap, beacon, buffersize);
 		printf("transmitted %d bytes of beacon data on %s for network '%s'\n", s, if_name, network);
-		usleep(1000);
+		usleep(100000);
 		if (count >= netc) count = 0;
 	}
 	pcap_close(pcap);

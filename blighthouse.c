@@ -47,18 +47,19 @@ char beacon_post_ssid[] =
 "\x32\x04\x30\x48\x60\x6c"
 ;
 
+static char *append_to_buf(char *buf, char *data, int size) {
+	memcpy(buf, data, size);
+	return buf+size;
+}
+
 int build_beacon(char *buf, char *essid) {
 	char *b = buf;
-	memcpy(b, radiotap_hdr, sizeof(radiotap_hdr)-1);
-	b += sizeof(radiotap_hdr)-1;
-	memcpy(b, beacon_pre_ssid, sizeof(beacon_pre_ssid)-1);
-	b += sizeof(beacon_pre_ssid)-1;
+	b = append_to_buf(b, radiotap_hdr, sizeof(radiotap_hdr)-1);
+	b = append_to_buf(b, beacon_pre_ssid, sizeof(beacon_pre_ssid)-1);
 	*(b++) = 0; // tag essid
 	*(b++) = strlen(essid);
-	memcpy(b, essid, strlen(essid));
-	b += strlen(essid);
-	memcpy(b, beacon_post_ssid, sizeof(beacon_post_ssid)-1);
-	b += sizeof(beacon_post_ssid)-1;
+	b = append_to_buf(b, essid, strlen(essid));
+	b = append_to_buf(b, beacon_post_ssid, sizeof(beacon_post_ssid)-1);
 	return (b-buf);
 }
 

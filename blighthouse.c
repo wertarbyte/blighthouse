@@ -45,18 +45,40 @@ int build_beacon(char *buf, char *essid) {
 int main(int argc, char *argv[]) {
 	char pcap_errbuf[PCAP_ERRBUF_SIZE];
 	pcap_errbuf[0] = '\0';
-	if (argc < 3) {
-		printf("Please specify interface and network names\n");
+
+	char *if_name = NULL;
+
+	int c;
+	opterr = 0;
+	while ((c = getopt(argc, argv, "i:")) != -1) {
+		switch(c) {
+			case 'i':
+				if_name = optarg;
+				break;
+			case '?':
+				if (optopt == 'c')
+					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+				else if (isprint (optopt))
+					fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+				else
+					fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
+				return 1;
+			default:
+				abort();
+		}
+	}
+	/* non-option arguments: network names */
+	int netc = argc-optind;
+	char **netp = argv+optind;
+	if (!if_name || netc < 1) {
+		fprintf(stderr, "Please specify interface and network names\n");
 		exit(1);
 	}
-	char *if_name = argv[1];
 	pcap_t *pcap = pcap_open_live(if_name, 96, 0, 0, pcap_errbuf);
 	if (!pcap) {
 		printf("%s\n", pcap_errbuf);
 		exit(1);
 	}
-	int netc = argc-2;
-	char **netp = argv+2;
 	char beacon[1024];
 	int count = 0;
 	printf("transmitting beacons for %d network%s via '%s'\n", netc, (netc == 1 ? "" : "s"), if_name);

@@ -50,6 +50,11 @@ static char *append_to_buf(char *buf, char *data, int size) {
 	return buf+size;
 }
 
+static char *append_str(char *buf, char *data) {
+	int size = strlen(data);
+	return append_to_buf(buf, data, size);
+}
+
 int build_beacon(char *buf, char *essid) {
 	char *b = buf;
 	/* prepend a minimal radiotap header */
@@ -59,7 +64,7 @@ int build_beacon(char *buf, char *essid) {
 	b = append_to_buf(b, beacon_pre_ssid, sizeof(beacon_pre_ssid)-1);
 	*(b++) = 0; // tag essid
 	*(b++) = strlen(essid);
-	b = append_to_buf(b, essid, strlen(essid));
+	b = append_str(b, essid);
 	b = append_to_buf(b, beacon_post_ssid, sizeof(beacon_post_ssid)-1);
 	return (b-buf);
 }

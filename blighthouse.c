@@ -5,11 +5,6 @@
 #include <unistd.h>
 #include <string.h>
 
-char radiotap_hdr[] = 
-/* radiotap header */
-"\x00\x00\x12\x00\x2e\x48\x00\x00\x00\x02\x6c\x09\xa0\x00\xe6\x07\x00\x00"
-;
-
 char beacon_pre_ssid[] = 
 /* IEEE802.11 */
 "\x80\x00\x00\x00"
@@ -57,7 +52,10 @@ static char *append_to_buf(char *buf, char *data, int size) {
 
 int build_beacon(char *buf, char *essid) {
 	char *b = buf;
-	b = append_to_buf(b, radiotap_hdr, sizeof(radiotap_hdr)-1);
+	/* prepend a minimal radiotap header */
+	memset(b, 0x00, 8);
+	b[2] = 8;
+	b += 8;
 	b = append_to_buf(b, beacon_pre_ssid, sizeof(beacon_pre_ssid)-1);
 	*(b++) = 0; // tag essid
 	*(b++) = strlen(essid);

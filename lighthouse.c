@@ -55,17 +55,20 @@ struct beacon_frame {
 int main(int argc, char *argv[]) {
 	char pcap_errbuf[PCAP_ERRBUF_SIZE];
 	pcap_errbuf[0] = '\0';
-	char *if_name = "wlan0";
+	if (argc < 2) {
+		printf("No interface specified\n");
+		exit(1);
+	}
+	char *if_name = argv[1];
 	pcap_t *pcap = pcap_open_live(if_name, 96, 0, 0, pcap_errbuf);
 	if (!pcap) {
-		printf("%s", pcap_errbuf);
+		printf("%s\n", pcap_errbuf);
 		exit(1);
 	}
 	int buffersize = sizeof(beacon)-1;
-	printf("buffersize: %d\n", buffersize);
 	while (1) {
 		int s = pcap_inject(pcap, beacon, buffersize);
-		printf("transmitted: %d\n", s);
+		printf("transmitted %d bytes of beacon data on %s\n", s, if_name);
 		usleep(1000);
 	}
 	pcap_close(pcap);

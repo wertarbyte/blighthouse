@@ -5,8 +5,8 @@
 #include <unistd.h>
 #include <string.h>
 
-static uint8_t ap_mac[6]    = "\x00\x16\x3e\x1c\x4a\x3f";
-static uint8_t timestamp[8] = "\x80\x61\x17\x06\x00\x00\x00\x00";
+static uint8_t ap_mac[6]    = {0x02, 0xDE, 0xAD, 0xBE, 0xEF, 0x42};
+static uint8_t timestamp[8] = {0xFF};
 
 static char *append_to_buf(char *buf, char *data, int size) {
 	memcpy(buf, data, size);

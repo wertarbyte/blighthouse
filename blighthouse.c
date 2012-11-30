@@ -49,16 +49,20 @@ int main(int argc, char *argv[]) {
 
 	char *if_name = NULL;
 	uint8_t time_ssid = 0;
+	uint8_t verbose = 0;
 
 	int c;
 	opterr = 0;
-	while ((c = getopt(argc, argv, "i:t")) != -1) {
+	while ((c = getopt(argc, argv, "i:tv")) != -1) {
 		switch(c) {
 			case 'i':
 				if_name = optarg;
 				break;
 			case 't':
 				time_ssid = 1;
+				break;
+			case 'v':
+				verbose = 1;
 				break;
 			case '?':
 				if (optopt == 'c')
@@ -105,6 +109,10 @@ int main(int argc, char *argv[]) {
 		}
 		int buffersize = build_beacon(beacon, network);
 		int s = pcap_inject(pcap, beacon, buffersize);
+		
+		if (verbose) {
+			printf("sending beacon '%s'\n", network);
+		}
 
 		usleep(100000/ssids);
 		count++;

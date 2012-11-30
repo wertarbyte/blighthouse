@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 
 static uint8_t ap_mac[6]    = {0x02, 0xDE, 0xAD, 0xBE, 0xEF, 0x42};
 static uint8_t timestamp[8] = {0xFF};
@@ -47,13 +48,17 @@ int main(int argc, char *argv[]) {
 	pcap_errbuf[0] = '\0';
 
 	char *if_name = NULL;
+	uint8_t time_ssid = 0;
 
 	int c;
 	opterr = 0;
-	while ((c = getopt(argc, argv, "i:")) != -1) {
+	while ((c = getopt(argc, argv, "i:t")) != -1) {
 		switch(c) {
 			case 'i':
 				if_name = optarg;
+				break;
+			case 't':
+				time_ssid = 1;
 				break;
 			case '?':
 				if (optopt == 'c')
@@ -70,7 +75,8 @@ int main(int argc, char *argv[]) {
 	/* non-option arguments: network names */
 	int netc = argc-optind;
 	char **netp = argv+optind;
-	if (!if_name || netc < 1) {
+	int ssids = netc+time_ssid;
+	if (!if_name || ssids < 1) {
 		fprintf(stderr, "Please specify interface and network names\n");
 		exit(1);
 	}
@@ -80,17 +86,25 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	char beacon[1024];
+	time_t t;
+	struct tm *tmp;
 	int count = 0;
-	printf("transmitting beacons for %d network%s via '%s'\n", netc, (netc == 1 ? "" : "s"), if_name);
+	printf("transmitting beacons for %d network%s via '%s'\n", ssids, (ssids == 1 ? "" : "s"), if_name);
 	while (1) {
-		char *network = netp[count++];
-		if (strlen(network) > 32) {
-			network[32] = '\0';
+		char network[33];
+		if (time_ssid && count == netc+time_ssid-1) {
+			t = time(NULL);
+			tmp = localtime(&t);
+			strftime(network, 32, "%Y-%m-%d %H:%M", tmp);
+		} else {
+			strncpy(network, netp[count], 32);
 		}
 		int buffersize = build_beacon(beacon, network);
 		int s = pcap_inject(pcap, beacon, buffersize);
-		usleep(100000/netc);
-		if (count >= netc) count = 0;
+
+		usleep(100000/ssids);
+		count++;
+		if (count >= ssids) count = 0;
 	}
 	pcap_close(pcap);
 	return 0;

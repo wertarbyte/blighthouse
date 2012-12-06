@@ -9,6 +9,8 @@
 static uint8_t ap_mac[6]    = {0x02, 0xDE, 0xAD, 0xBE, 0xEF, 0x42};
 static uint8_t timestamp[8] = {0xFF};
 
+static uint8_t dest_mac[6]  = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
 static char *append_to_buf(char *buf, char *data, int size) {
 	memcpy(buf, data, size);
 	return buf+size;
@@ -26,7 +28,7 @@ int build_beacon(char *buf, char *essid) {
 	b[2] = 8;
 	b += 8;
 	b = append_to_buf(b, "\x80\x00\x00\x00", 4); /* IEEE802.11 beacon frame */
-	b = append_to_buf(b, "\xff\xff\xff\xff\xff\xff", 6); /* destination */
+	b = append_to_buf(b, dest_mac, sizeof(dest_mac)); /* destination */
 	b = append_to_buf(b, ap_mac, sizeof(ap_mac)); /* source */
 	b = append_to_buf(b, ap_mac, sizeof(ap_mac)); /* BSSID */
 	b = append_to_buf(b, "\x00\x00", 2); /* sequence number */
@@ -43,6 +45,11 @@ int build_beacon(char *buf, char *essid) {
 	return (b-buf);
 }
 
+int read_mac(char *arg) {
+	int r = sscanf(arg, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", dest_mac, dest_mac+1, dest_mac+2, dest_mac+3, dest_mac+4, dest_mac+5);
+	return (r != sizeof(dest_mac));
+}
+
 int main(int argc, char *argv[]) {
 	char pcap_errbuf[PCAP_ERRBUF_SIZE];
 	pcap_errbuf[0] = '\0';
@@ -53,7 +60,7 @@ int main(int argc, char *argv[]) {
 
 	int c;
 	opterr = 0;
-	while ((c = getopt(argc, argv, "i:tv")) != -1) {
+	while ((c = getopt(argc, argv, "i:d:tv")) != -1) {
 		switch(c) {
 			case 'i':
 				if_name = optarg;
@@ -63,6 +70,12 @@ int main(int argc, char *argv[]) {
 				break;
 			case 'v':
 				verbose = 1;
+				break;
+			case 'd':
+				if (read_mac(optarg)) {
+					fprintf (stderr, "Unable to parse mac address.\n", optopt);
+					return 1;
+				}
 				break;
 			case '?':
 				if (optopt == 'c')

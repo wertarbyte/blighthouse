@@ -63,9 +63,24 @@ int build_beacon(char *buf, char *essid, mac_t *mac, uint8_t add_wpa) {
 	return (b-buf);
 }
 
+void print_mac(mac_t m) {
+	printf("%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", m[0], m[1], m[2], m[3], m[4], m[5]);
+}
+
 int read_mac(char *arg) {
 	int r = sscanf(arg, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", dest_mac, dest_mac+1, dest_mac+2, dest_mac+3, dest_mac+4, dest_mac+5);
 	return (r != sizeof(dest_mac));
+}
+
+void process_probe(u_char *user, const struct pcap_pkthdr *h, const uint8_t *b) {
+	printf("Incoming request\n");
+	/* where does the wifi header start? */
+	uint16_t rt_length = (b[2] | (uint16_t)b[3]>>8);
+	printf("rt_length %d\n", rt_length);
+	printf("rt_length %hhx\n", b[rt_length+4]);
+	printf("DST: "); print_mac((mac_t *)&b[rt_length+4]); printf("\n");
+	printf("SRC: "); print_mac((mac_t *)&b[rt_length+4+6]); printf("\n");
+	printf("BSS: "); print_mac((mac_t *)&b[rt_length+4+6+6]); printf("\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -118,11 +133,15 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "Please specify interface and network names\n");
 		exit(1);
 	}
-	pcap_t *pcap = pcap_open_live(if_name, 96, 0, 0, pcap_errbuf);
+	pcap_t *pcap = pcap_open_live(if_name, 1024, 0, 1, pcap_errbuf);
 	if (!pcap) {
 		printf("%s\n", pcap_errbuf);
 		exit(1);
 	}
+	struct bpf_program filter_probe_req;
+	pcap_compile(pcap, &filter_probe_req, "type mgt subtype probe-req", 1, PCAP_NETMASK_UNKNOWN);
+	pcap_setfilter(pcap, &filter_probe_req);
+
 	int link_layer_type = pcap_datalink(pcap);
 	if (link_layer_type != DLT_IEEE802_11_RADIO) {
 		const char *lln_pre = pcap_datalink_val_to_name(link_layer_type);
@@ -136,7 +155,8 @@ int main(int argc, char *argv[]) {
 	struct tm *tmp;
 	int count = 0;
 	printf("transmitting beacons for %d network%s via '%s'", ssids, (ssids == 1 ? "" : "s"), if_name);
-	printf(" to %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", dest_mac[0], dest_mac[1], dest_mac[2], dest_mac[3], dest_mac[4], dest_mac[5]);
+	printf(" to ");
+	print_mac(dest_mac);
 	printf("\n");
 	while (1) {
 		mac_t ap_mac;
@@ -166,6 +186,8 @@ int main(int argc, char *argv[]) {
 		usleep(100000/ssids);
 		count++;
 		if (count >= ssids) count = 0;
+
+		pcap_dispatch(pcap, -1, &process_probe, "beacon");
 	}
 	pcap_close(pcap);
 	return 0;

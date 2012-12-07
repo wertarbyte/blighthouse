@@ -63,7 +63,7 @@ int build_beacon(char *buf, char *essid, mac_t *mac, uint8_t add_wpa) {
 	return (b-buf);
 }
 
-void print_mac(mac_t m) {
+void print_mac(const mac_t m) {
 	printf("%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", m[0], m[1], m[2], m[3], m[4], m[5]);
 }
 
@@ -78,9 +78,9 @@ void process_probe(u_char *user, const struct pcap_pkthdr *h, const uint8_t *b) 
 	uint16_t rt_length = (b[2] | (uint16_t)b[3]>>8);
 	printf("rt_length %d\n", rt_length);
 	printf("rt_length %hhx\n", b[rt_length+4]);
-	printf("DST: "); print_mac((mac_t *)&b[rt_length+4]); printf("\n");
-	printf("SRC: "); print_mac((mac_t *)&b[rt_length+4+6]); printf("\n");
-	printf("BSS: "); print_mac((mac_t *)&b[rt_length+4+6+6]); printf("\n");
+	printf("DST: "); print_mac(&b[rt_length+4]); printf("\n");
+	printf("SRC: "); print_mac(&b[rt_length+4+6]); printf("\n");
+	printf("BSS: "); print_mac(&b[rt_length+4+6+6]); printf("\n");
 }
 
 int main(int argc, char *argv[]) {

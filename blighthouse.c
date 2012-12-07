@@ -6,10 +6,12 @@
 #include <string.h>
 #include <time.h>
 
-static uint8_t ap_mac[6]    = {0x02, 0xDE, 0xAD, 0xBE, 0xEF, 0x42};
+typedef uint8_t mac_t[6];
+
 static uint8_t timestamp[8] = {0xFF};
 
-static uint8_t dest_mac[6]  = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+static mac_t ap_base_mac = {0x02, 0xDE, 0xAD, 0xBE, 0xEF, 0x42};
+static mac_t dest_mac    = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 static char *append_to_buf(char *buf, char *data, int size) {
 	memcpy(buf, data, size);
@@ -21,7 +23,7 @@ static char *append_str(char *buf, char *data) {
 	return append_to_buf(buf, data, size);
 }
 
-int build_beacon(char *buf, char *essid) {
+int build_beacon(char *buf, char *essid, mac_t *mac) {
 	char *b = buf;
 	/* prepend a minimal radiotap header */
 	memset(b, 0x00, 8);
@@ -29,8 +31,8 @@ int build_beacon(char *buf, char *essid) {
 	b += 8;
 	b = append_to_buf(b, "\x80\x00\x00\x00", 4); /* IEEE802.11 beacon frame */
 	b = append_to_buf(b, dest_mac, sizeof(dest_mac)); /* destination */
-	b = append_to_buf(b, ap_mac, sizeof(ap_mac)); /* source */
-	b = append_to_buf(b, ap_mac, sizeof(ap_mac)); /* BSSID */
+	b = append_to_buf(b, *mac, sizeof(*mac)); /* source */
+	b = append_to_buf(b, *mac, sizeof(*mac)); /* BSSID */
 	b = append_to_buf(b, "\x00\x00", 2); /* sequence number */
 	b = append_to_buf(b, timestamp, sizeof(timestamp)); /* time stamp */
 	b = append_to_buf(b, "\x64\x00", 2); /* beacon interval */
@@ -116,6 +118,9 @@ int main(int argc, char *argv[]) {
 	int count = 0;
 	printf("transmitting beacons for %d network%s via '%s'\n", ssids, (ssids == 1 ? "" : "s"), if_name);
 	while (1) {
+		mac_t ap_mac;
+		memcpy(ap_mac, &ap_base_mac, sizeof(mac_t));
+		ap_mac[5] += count;
 		char network[33];
 		if (time_ssid && count == netc+time_ssid-1) {
 			t = time(NULL);
@@ -128,11 +133,13 @@ int main(int argc, char *argv[]) {
 		} else {
 			strncpy(network, netp[count], 32);
 		}
-		int buffersize = build_beacon(beacon, network);
+		int buffersize = build_beacon(beacon, network, &ap_mac);
 		int s = pcap_inject(pcap, beacon, buffersize);
 		
 		if (verbose) {
-			printf("sending beacon '%s'\n", network);
+			printf("sending beacon '%s'", network);
+			printf(" (AP: %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx)", ap_mac[0], ap_mac[1], ap_mac[2], ap_mac[3], ap_mac[4], ap_mac[5]);
+			printf("\n");
 		}
 
 		usleep(100000/ssids);

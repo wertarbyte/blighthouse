@@ -116,7 +116,9 @@ int main(int argc, char *argv[]) {
 	time_t t;
 	struct tm *tmp;
 	int count = 0;
-	printf("transmitting beacons for %d network%s via '%s'\n", ssids, (ssids == 1 ? "" : "s"), if_name);
+	printf("transmitting beacons for %d network%s via '%s'", ssids, (ssids == 1 ? "" : "s"), if_name);
+	printf(" to %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", dest_mac[0], dest_mac[1], dest_mac[2], dest_mac[3], dest_mac[4], dest_mac[5]);
+	printf("\n");
 	while (1) {
 		mac_t ap_mac;
 		memcpy(ap_mac, &ap_base_mac, sizeof(mac_t));

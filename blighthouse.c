@@ -13,6 +13,8 @@ static uint8_t timestamp[8] = {0xFF};
 static mac_t ap_base_mac = {0x02, 0xDE, 0xAD, 0xBE, 0xEF, 0x42};
 static mac_t dest_mac    = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
+static uint8_t use_wpa = 0;
+
 static char *append_to_buf(char *buf, char *data, int size) {
 	memcpy(buf, data, size);
 	return buf+size;
@@ -23,7 +25,7 @@ static char *append_str(char *buf, char *data) {
 	return append_to_buf(buf, data, size);
 }
 
-int build_beacon(char *buf, char *essid, mac_t *mac) {
+int build_beacon(char *buf, char *essid, mac_t *mac, uint8_t add_wpa) {
 	char *b = buf;
 	/* prepend a minimal radiotap header */
 	memset(b, 0x00, 8);
@@ -44,6 +46,20 @@ int build_beacon(char *buf, char *essid, mac_t *mac) {
 
 	b = append_to_buf(b, "\x01\x01\x82", 3); /* We only support 1 MBit */
 	b = append_to_buf(b, "\x03\x01\x01", 3); /* we are on channel 1 */
+	
+	/* WPA tags */
+	if (use_wpa) {
+		b = append_to_buf(b, "\x30", 1);
+		b = append_to_buf(b, "\x14", 1); /* tag length */
+		b = append_to_buf(b, "\x01\x00", 2); /* version */
+		b = append_to_buf(b, "\x00\x0f\xac", 3); /* cipher suite OUI */
+		b = append_to_buf(b, "\x02", 1); /* TKIP */
+		b = append_to_buf(b, "\x01\x00", 2); /* cipher suite count */
+		b = append_to_buf(b, "\x00\x0f\xac\x02", 4); /* pairwire cipher suite list */
+		b = append_to_buf(b, "\x01\x00", 2); /* auth key management suite count */
+		b = append_to_buf(b, "\x00\x0f\xac\x02", 4); /* auth key management list */
+		b = append_to_buf(b, "\x00\x00", 2); /* RSN capabilities */
+	}
 	return (b-buf);
 }
 
@@ -62,7 +78,7 @@ int main(int argc, char *argv[]) {
 
 	int c;
 	opterr = 0;
-	while ((c = getopt(argc, argv, "i:d:tv")) != -1) {
+	while ((c = getopt(argc, argv, "i:d:twv")) != -1) {
 		switch(c) {
 			case 'i':
 				if_name = optarg;
@@ -78,6 +94,9 @@ int main(int argc, char *argv[]) {
 					fprintf (stderr, "Unable to parse mac address.\n", optopt);
 					return 1;
 				}
+				break;
+			case 'w':
+				use_wpa = 1;
 				break;
 			case '?':
 				if (optopt == 'c')
@@ -135,7 +154,7 @@ int main(int argc, char *argv[]) {
 		} else {
 			strncpy(network, netp[count], 32);
 		}
-		int buffersize = build_beacon(beacon, network, &ap_mac);
+		int buffersize = build_beacon(beacon, network, &ap_mac, use_wpa);
 		int s = pcap_inject(pcap, beacon, buffersize);
 		
 		if (verbose) {

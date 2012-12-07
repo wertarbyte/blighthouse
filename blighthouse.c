@@ -72,15 +72,35 @@ int read_mac(char *arg) {
 	return (r != sizeof(dest_mac));
 }
 
+void get_essid(char *essid, const uint8_t *p, const size_t max_psize) {
+	const uint8_t *end = p+max_psize;
+	p += 4+6+6+6+2;
+	while (p < end) {
+		if (*p == 0x00) {
+			if (p[1] == 0) {
+				/* nothing to do */
+			} else {
+				strncpy(essid, &p[2], p[1]);
+			}
+			essid[p[1]] = '\0';
+			break;
+		} else {
+			p += 1+p[1];
+		}
+	}
+}
+
 void process_probe(u_char *user, const struct pcap_pkthdr *h, const uint8_t *b) {
 	printf("Incoming request\n");
 	/* where does the wifi header start? */
 	uint16_t rt_length = (b[2] | (uint16_t)b[3]>>8);
-	printf("rt_length %d\n", rt_length);
-	printf("rt_length %hhx\n", b[rt_length+4]);
-	printf("DST: "); print_mac(&b[rt_length+4]); printf("\n");
-	printf("SRC: "); print_mac(&b[rt_length+4+6]); printf("\n");
-	printf("BSS: "); print_mac(&b[rt_length+4+6+6]); printf("\n");
+	const uint8_t *p = &b[rt_length];
+	printf("DST: "); print_mac(&p[4]); printf("\n");
+	printf("SRC: "); print_mac(&p[4+6]); printf("\n");
+	printf("BSS: "); print_mac(&p[4+6+6]); printf("\n");
+	char essid[0xFF];
+	get_essid(essid, p, h->caplen);
+	printf("SSID <%s>\n", essid);
 }
 
 int main(int argc, char *argv[]) {

@@ -124,10 +124,11 @@ int main(int argc, char *argv[]) {
 	char *if_name = NULL;
 	uint8_t time_ssid = 0;
 	uint8_t verbose = 0;
+	uint8_t listen = 0;
 	
 	int c;
 	opterr = 0;
-	while ((c = getopt(argc, argv, "i:d:twv")) != -1) {
+	while ((c = getopt(argc, argv, "i:d:tlwv")) != -1) {
 		switch(c) {
 			case 'i':
 				if_name = optarg;
@@ -143,6 +144,9 @@ int main(int argc, char *argv[]) {
 					fprintf (stderr, "Unable to parse mac address.\n", optopt);
 					return 1;
 				}
+				break;
+			case 'l':
+				listen = 1;
 				break;
 			case 'w':
 				use_wpa = 1;
@@ -192,9 +196,11 @@ int main(int argc, char *argv[]) {
 		printf("%s\n", pcap_errbuf);
 		exit(1);
 	}
-	struct bpf_program filter_probe_req;
-	pcap_compile(pcap, &filter_probe_req, "type mgt subtype probe-req", 1, PCAP_NETMASK_UNKNOWN);
-	pcap_setfilter(pcap, &filter_probe_req);
+	if (listen) {
+		struct bpf_program filter_probe_req;
+		pcap_compile(pcap, &filter_probe_req, "type mgt subtype probe-req", 1, PCAP_NETMASK_UNKNOWN);
+		pcap_setfilter(pcap, &filter_probe_req);
+	}
 
 	int link_layer_type = pcap_datalink(pcap);
 	if (link_layer_type != DLT_IEEE802_11_RADIO) {
@@ -241,7 +247,9 @@ int main(int argc, char *argv[]) {
 		count++;
 		if (count >= network_count) count = 0;
 
-		pcap_dispatch(pcap, -1, &process_probe, "beacon");
+		if (listen) {
+			pcap_dispatch(pcap, -1, &process_probe, "beacon");
+		}
 	}
 	pcap_close(pcap);
 	return 0;

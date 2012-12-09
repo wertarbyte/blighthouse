@@ -190,6 +190,9 @@ int main(int argc, char *argv[]) {
 		/* generate a MAC address */
 		memcpy(&networks[i].mac, &ap_base_mac, sizeof(mac_t));
 		networks[i].mac[5] += i;
+		if (use_wpa) {
+			networks[i].flags |= NETWORK_FLAG_WPA;
+		}
 	}
 	pcap_t *pcap = pcap_open_live(if_name, 1024, 0, 1, pcap_errbuf);
 	if (!pcap) {
@@ -234,7 +237,7 @@ int main(int argc, char *argv[]) {
 		} else {
 			strncpy(network, nw->ssid, 32);
 		}
-		int buffersize = build_beacon(beacon, network, &ap_mac, use_wpa);
+		int buffersize = build_beacon(beacon, network, &ap_mac, nw->flags & NETWORK_FLAG_WPA);
 		int s = pcap_inject(pcap, beacon, buffersize);
 		
 		if (verbose) {

@@ -6,6 +6,8 @@
 #include <string.h>
 #include <time.h>
 
+static uint8_t verbose = 0;
+
 typedef uint8_t mac_t[6];
 
 static uint8_t timestamp[8] = {0xFF};
@@ -105,16 +107,18 @@ void get_essid(char *essid, const uint8_t *p, const size_t max_psize) {
 }
 
 void process_probe(u_char *user, const struct pcap_pkthdr *h, const uint8_t *b) {
-	printf("Incoming request\n");
 	/* where does the wifi header start? */
 	uint16_t rt_length = (b[2] | (uint16_t)b[3]>>8);
 	const uint8_t *p = &b[rt_length];
-	printf("DST: "); print_mac(&p[4]); printf("\n");
-	printf("SRC: "); print_mac(&p[4+6]); printf("\n");
-	printf("BSS: "); print_mac(&p[4+6+6]); printf("\n");
 	char essid[0xFF];
 	get_essid(essid, p, h->caplen);
-	printf("SSID <%s>\n", essid);
+	if (verbose) {
+		printf("Incoming request\n");
+		printf("DST: "); print_mac(&p[4]); printf("\n");
+		printf("SRC: "); print_mac(&p[4+6]); printf("\n");
+		printf("BSS: "); print_mac(&p[4+6+6]); printf("\n");
+		printf("SSID <%s>\n", essid);
+	}
 }
 
 int main(int argc, char *argv[]) {
@@ -123,7 +127,6 @@ int main(int argc, char *argv[]) {
 
 	char *if_name = NULL;
 	uint8_t time_ssid = 0;
-	uint8_t verbose = 0;
 	uint8_t listen = 0;
 	
 	int c;

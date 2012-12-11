@@ -54,6 +54,16 @@ int network_count(struct network_t **list) {
 	return i;
 }
 
+struct network_t *network_find(struct network_t **list, char *ssid) {
+	while (*list) {
+		if (strcmp(ssid, (*list)->ssid) == 0) {
+			return *list;
+		}
+		list = &(*list)->next;
+	}
+	return NULL;
+}
+
 static char *append_to_buf(char *buf, char *data, int size) {
 	memcpy(buf, data, size);
 	return buf+size;
@@ -141,6 +151,12 @@ void process_probe(u_char *user, const struct pcap_pkthdr *h, const uint8_t *b) 
 		printf("SRC: "); print_mac(&p[4+6]); printf("\n");
 		printf("BSS: "); print_mac(&p[4+6+6]); printf("\n");
 		printf("SSID <%s>\n", essid);
+	}
+	struct network_t *n = network_find(&network_list, essid);
+	if (n) {
+		printf("Incoming probe from ");
+		print_mac(&p[4+6]);
+		printf(" for ssid <%s>\n", essid);
 	}
 }
 

@@ -13,6 +13,8 @@ typedef uint8_t mac_t[6];
 static uint8_t timestamp[8] = {0xFF};
 
 static mac_t ap_base_mac = {0x02, 0xDE, 0xAD, 0xBE, 0xEF, 0x42};
+static mac_t brd_mac     = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
 static mac_t dest_mac    = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 static uint8_t use_wpa = 0;
@@ -23,6 +25,7 @@ static uint8_t use_wpa = 0;
 struct network_t {
 	char ssid[33]; /* ESSID name (0-terminated string) */
 	mac_t mac;
+	mac_t dst;
 	uint8_t flags;
 	struct network_t *next;
 };
@@ -37,6 +40,7 @@ struct network_t *network_add(struct network_t **list, char *ssid, mac_t *m, uin
 	strncpy((*list)->ssid, ssid, sizeof((*list)->ssid));
 	(*list)->ssid[32] = '\0';
 	memcpy(&((*list)->mac), m, sizeof(*m));
+	memcpy(&((*list)->dst), dest_mac, sizeof(*m));
 	(*list)->flags = flags;
 	(*list)->next = NULL;
 }
@@ -60,30 +64,30 @@ static char *append_str(char *buf, char *data) {
 	return append_to_buf(buf, data, size);
 }
 
-int build_beacon(char *buf, char *essid, mac_t *mac, uint8_t add_wpa) {
+int build_beacon(char *buf, struct network_t *n) {
 	char *b = buf;
 	/* prepend a minimal radiotap header */
 	memset(b, 0x00, 8);
 	b[2] = 8;
 	b += 8;
 	b = append_to_buf(b, "\x80\x00\x00\x00", 4); /* IEEE802.11 beacon frame */
-	b = append_to_buf(b, dest_mac, sizeof(dest_mac)); /* destination */
-	b = append_to_buf(b, *mac, sizeof(*mac)); /* source */
-	b = append_to_buf(b, *mac, sizeof(*mac)); /* BSSID */
+	b = append_to_buf(b, n->dst, sizeof(mac_t)); /* destination */
+	b = append_to_buf(b, n->mac, sizeof(mac_t)); /* source */
+	b = append_to_buf(b, n->mac, sizeof(mac_t)); /* BSSID */
 	b = append_to_buf(b, "\x00\x00", 2); /* sequence number */
 	b = append_to_buf(b, timestamp, sizeof(timestamp)); /* time stamp */
 	b = append_to_buf(b, "\x64\x00", 2); /* beacon interval */
 	b = append_to_buf(b, "\x01\x04", 2); /* capabilities */
 
 	*(b++) = 0; /* tag essid */
-	*(b++) = strlen(essid);
-	b = append_str(b, essid);
+	*(b++) = strlen(n->ssid);
+	b = append_str(b, n->ssid);
 
 	b = append_to_buf(b, "\x01\x01\x82", 3); /* We only support 1 MBit */
 	b = append_to_buf(b, "\x03\x01\x01", 3); /* we are on channel 1 */
 	
 	/* WPA tags */
-	if (use_wpa) {
+	if (n->flags & NETWORK_FLAG_WPA) {
 		b = append_to_buf(b, "\x30", 1);
 		b = append_to_buf(b, "\x14", 1); /* tag length */
 		b = append_to_buf(b, "\x01\x00", 2); /* version */
@@ -239,7 +243,6 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		mac_t ap_mac;
 		memcpy(ap_mac, &nw->mac, sizeof(mac_t));
-		char network[33];
 		if (nw->flags & NETWORK_FLAG_TIME) {
 			t = time(NULL);
 			tmp = localtime(&t);
@@ -247,15 +250,13 @@ int main(int argc, char *argv[]) {
 				perror("localtime");
 				exit(1);
 			}
-			strftime(network, 32, "%Y-%m-%d %H:%M", tmp);
-		} else {
-			strncpy(network, nw->ssid, 32);
+			strftime(nw->ssid, 32, "%Y-%m-%d %H:%M", tmp);
 		}
-		int buffersize = build_beacon(beacon, network, &ap_mac, nw->flags & NETWORK_FLAG_WPA);
+		int buffersize = build_beacon(beacon, nw);
 		int s = pcap_inject(pcap, beacon, buffersize);
 		
 		if (verbose) {
-			printf("sending beacon '%s'", network);
+			printf("sending beacon '%s'", nw->ssid);
 			printf(" (AP: %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx)", ap_mac[0], ap_mac[1], ap_mac[2], ap_mac[3], ap_mac[4], ap_mac[5]);
 			printf("\n");
 		}

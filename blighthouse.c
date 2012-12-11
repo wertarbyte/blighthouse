@@ -261,8 +261,6 @@ int main(int argc, char *argv[]) {
 	printf("\n");
 	struct network_t *nw = network_list;
 	while (1) {
-		mac_t ap_mac;
-		memcpy(ap_mac, &nw->mac, sizeof(mac_t));
 		if (nw->flags & NETWORK_FLAG_TIME) {
 			t = time(NULL);
 			tmp = localtime(&t);
@@ -277,7 +275,7 @@ int main(int argc, char *argv[]) {
 		
 		if (verbose) {
 			printf("sending beacon '%s'", nw->ssid);
-			printf(" (AP: %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx)", ap_mac[0], ap_mac[1], ap_mac[2], ap_mac[3], ap_mac[4], ap_mac[5]);
+			printf(" (AP: %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx)", nw->mac[0], nw->mac[1], nw->mac[2], nw->mac[3], nw->mac[4], nw->mac[5]);
 			printf("\n");
 		}
 

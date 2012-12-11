@@ -24,6 +24,7 @@ struct network_t {
 	char ssid[33]; /* ESSID name (0-terminated string) */
 	mac_t mac;
 	mac_t dst;
+	uint16_t seq;
 	uint8_t flags;
 	struct network_t *next;
 };
@@ -39,6 +40,7 @@ struct network_t *network_add(struct network_t **list, char *ssid, mac_t *m, uin
 	(*list)->ssid[32] = '\0';
 	memcpy(&((*list)->mac), m, sizeof(*m));
 	memcpy(&((*list)->dst), dest_mac, sizeof(*m));
+	(*list)->seq = 0;
 	(*list)->flags = flags;
 	(*list)->next = NULL;
 }
@@ -82,7 +84,10 @@ int build_beacon(char *buf, struct network_t *n) {
 	b = append_to_buf(b, n->dst, sizeof(mac_t)); /* destination */
 	b = append_to_buf(b, n->mac, sizeof(mac_t)); /* source */
 	b = append_to_buf(b, n->mac, sizeof(mac_t)); /* BSSID */
-	b = append_to_buf(b, "\x00\x00", 2); /* sequence number */
+	/* sequence number */
+	*(b++) = n->seq >> 8;
+	*(b++) = n->seq & 0x00FF;
+	n->seq++;
 	b = append_to_buf(b, timestamp, sizeof(timestamp)); /* time stamp */
 	b = append_to_buf(b, "\x64\x00", 2); /* beacon interval */
 	b = append_to_buf(b, "\x01\x04", 2); /* capabilities */

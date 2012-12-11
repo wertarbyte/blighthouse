@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
 				use_wpa = 1;
 				break;
 			case '?':
-				if (optopt == 'c')
+				if (optopt == 'i' || optopt == 'd')
 					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
 				else if (isprint (optopt))
 					fprintf (stderr, "Unknown option `-%c'.\n", optopt);

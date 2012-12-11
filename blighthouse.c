@@ -24,12 +24,31 @@ struct network_t {
 	char ssid[33]; /* ESSID name (0-terminated string) */
 	mac_t mac;
 	uint8_t flags;
+	struct network_t *next;
 };
 
-/* pointer to network information structs */
-struct network_t *networks = NULL;
-/* number of networks we are transmitting */
-uint16_t network_count = 0;
+static struct network_t *network_list = NULL;
+
+struct network_t *network_add(struct network_t **list, char *ssid, mac_t *m, uint8_t flags) {
+	while (*list) {
+		list = &(*list)->next;
+	}
+	*list = malloc(sizeof(**list));
+	strncpy((*list)->ssid, ssid, sizeof((*list)->ssid));
+	(*list)->ssid[32] = '\0';
+	memcpy(&((*list)->mac), m, sizeof(*m));
+	(*list)->flags = flags;
+	(*list)->next = NULL;
+}
+
+int network_count(struct network_t **list) {
+	int i = 0;
+	while (*list) {
+		list = &(*list)->next;
+		i++;
+	}
+	return i;
+}
 
 static char *append_to_buf(char *buf, char *data, int size) {
 	memcpy(buf, data, size);
@@ -169,33 +188,25 @@ int main(int argc, char *argv[]) {
 	/* non-option arguments: network names */
 	int netc = argc-optind;
 	char **netp = argv+optind;
-	network_count = netc+time_ssid;
-	if (!if_name || network_count < 1) {
-		fprintf(stderr, "Please specify interface and network names\n");
-		exit(1);
-	}
-	/* allocate memory for network_t array */
-	networks = malloc(sizeof(*networks) * network_count);
-	if (networks == NULL) {
-		fprintf(stderr, "Unable to allocate memory!\n");
-		exit(1);
-	}
-	memset(networks, 0, sizeof(*networks) * network_count);
 	/* populate the data structures */
 	int i;
-	for (i=0; i<network_count; i++) {
-		if (i<netc) {
-			strncpy(networks[i].ssid, netp[i], 32);
-		} else {
-			/* time beacon */
-			networks[i].flags |= NETWORK_FLAG_TIME;
-		}
+	if (time_ssid) {
+		uint8_t flags = NETWORK_FLAG_TIME;
+		flags |= (use_wpa ? NETWORK_FLAG_WPA : 0);
+		network_add(&network_list, "", &ap_base_mac, flags);
+	}
+	for (i=0; i<netc; i++) {
+		struct network_t *n = network_add(&network_list, netp[i], &ap_base_mac, 0);
 		/* generate a MAC address */
-		memcpy(&networks[i].mac, &ap_base_mac, sizeof(mac_t));
-		networks[i].mac[5] += i;
+		n->mac[5] += (i+1);
 		if (use_wpa) {
-			networks[i].flags |= NETWORK_FLAG_WPA;
+			n->flags |= NETWORK_FLAG_WPA;
 		}
+	}
+	int quantity = network_count(&network_list);
+	if (!if_name || quantity < 1) {
+		fprintf(stderr, "Please specify interface and network names\n");
+		exit(1);
 	}
 	pcap_t *pcap = pcap_open_live(if_name, 1024, 0, 1, pcap_errbuf);
 	if (!pcap) {
@@ -220,12 +231,12 @@ int main(int argc, char *argv[]) {
 	time_t t;
 	struct tm *tmp;
 	int count = 0;
-	printf("transmitting beacons for %d network%s via '%s'", network_count, (network_count == 1 ? "" : "s"), if_name);
+	printf("transmitting beacons for %d network%s via '%s'", quantity, (quantity == 1 ? "" : "s"), if_name);
 	printf(" to ");
 	print_mac(dest_mac);
 	printf("\n");
+	struct network_t *nw = network_list;
 	while (1) {
-		struct network_t *nw = &networks[count];
 		mac_t ap_mac;
 		memcpy(ap_mac, &nw->mac, sizeof(mac_t));
 		char network[33];
@@ -249,9 +260,9 @@ int main(int argc, char *argv[]) {
 			printf("\n");
 		}
 
-		usleep(100000/network_count);
-		count++;
-		if (count >= network_count) count = 0;
+		usleep(100000/network_count(&network_list));
+		nw = nw->next;
+		if (nw == NULL) nw = network_list;
 
 		if (listen) {
 			pcap_dispatch(pcap, -1, &process_probe, "beacon");

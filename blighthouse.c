@@ -17,8 +17,6 @@ static mac_t brd_mac     = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 static mac_t dest_mac    = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-static uint8_t use_wpa = 0;
-
 #define NETWORK_FLAG_WPA  (1<<0)
 #define NETWORK_FLAG_TIME (1<<1)
 
@@ -165,6 +163,7 @@ int main(int argc, char *argv[]) {
 	pcap_errbuf[0] = '\0';
 
 	char *if_name = NULL;
+	uint8_t use_wpa = 0;
 	uint8_t time_ssid = 0;
 	uint8_t listen = 0;
 	

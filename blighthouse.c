@@ -127,11 +127,11 @@ int main(int argc, char *argv[]) {
 	if (time_ssid) {
 		uint8_t flags = NETWORK_FLAG_TIME;
 		flags |= (use_wpa ? NETWORK_FLAG_WPA : 0);
-		struct network_t *n = network_add(&network_list, "", &ap_base_mac, &dest_mac, flags);
+		struct network_t *n = network_add(&network_list, "", ap_base_mac, dest_mac, flags);
 		n->channel = channel;
 	}
 	for (i=0; i<netc; i++) {
-		struct network_t *n = network_add(&network_list, netp[i], &ap_base_mac, &dest_mac, 0);
+		struct network_t *n = network_add(&network_list, netp[i], ap_base_mac, dest_mac, 0);
 		/* generate a MAC address */
 		n->mac[5] += (i+1);
 		if (use_wpa) {

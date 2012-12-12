@@ -18,7 +18,7 @@ struct network_t {
 	struct network_t *next;
 };
 
-struct network_t *network_add(struct network_t **list, char *ssid, mac_t *m, mac_t *d, uint8_t flags);
+struct network_t *network_add(struct network_t **list, char *ssid, mac_t m, mac_t d, uint8_t flags);
 
 int network_count(struct network_t **list);
 

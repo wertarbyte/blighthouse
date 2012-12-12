@@ -6,15 +6,15 @@
 
 #include "network.h"
 
-struct network_t *network_add(struct network_t **list, char *ssid, mac_t *m, mac_t *d, uint8_t flags) {
+struct network_t *network_add(struct network_t **list, char *ssid, mac_t m, mac_t d, uint8_t flags) {
 	while (*list) {
 		list = &(*list)->next;
 	}
 	*list = malloc(sizeof(**list));
 	strncpy((*list)->ssid, ssid, sizeof((*list)->ssid));
 	(*list)->ssid[32] = '\0';
-	memcpy(&((*list)->mac), m, sizeof(*m));
-	memcpy(&((*list)->dst), d, sizeof(*d));
+	memcpy((*list)->mac, m, sizeof(mac_t));
+	memcpy((*list)->dst, d, sizeof(mac_t));
 	(*list)->seq = 0;
 	(*list)->flags = flags;
 	(*list)->next = NULL;

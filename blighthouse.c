@@ -6,116 +6,19 @@
 #include <string.h>
 #include <time.h>
 
+#include "types.h"
+#include "network.h"
+#include "packet.h"
+
 static uint8_t verbose = 0;
 
-typedef uint8_t mac_t[6];
-
-static uint8_t timestamp[8] = {0xFF};
 
 static mac_t ap_base_mac = {0x02, 0xDE, 0xAD, 0xBE, 0xEF, 0x42};
 static mac_t brd_mac     = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 static mac_t dest_mac    = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-#define NETWORK_FLAG_WPA  (1<<0)
-#define NETWORK_FLAG_TIME (1<<1)
-
-struct network_t {
-	char ssid[33]; /* ESSID name (0-terminated string) */
-	mac_t mac;
-	mac_t dst;
-	uint16_t seq;
-	uint8_t channel;
-	uint8_t flags;
-	struct network_t *next;
-};
-
 static struct network_t *network_list = NULL;
-
-struct network_t *network_add(struct network_t **list, char *ssid, mac_t *m, uint8_t flags) {
-	while (*list) {
-		list = &(*list)->next;
-	}
-	*list = malloc(sizeof(**list));
-	strncpy((*list)->ssid, ssid, sizeof((*list)->ssid));
-	(*list)->ssid[32] = '\0';
-	memcpy(&((*list)->mac), m, sizeof(*m));
-	memcpy(&((*list)->dst), dest_mac, sizeof(*m));
-	(*list)->seq = 0;
-	(*list)->flags = flags;
-	(*list)->next = NULL;
-}
-
-int network_count(struct network_t **list) {
-	int i = 0;
-	while (*list) {
-		list = &(*list)->next;
-		i++;
-	}
-	return i;
-}
-
-struct network_t *network_find(struct network_t **list, char *ssid) {
-	while (*list) {
-		if (strcmp(ssid, (*list)->ssid) == 0) {
-			return *list;
-		}
-		list = &(*list)->next;
-	}
-	return NULL;
-}
-
-static char *append_to_buf(char *buf, char *data, int size) {
-	memcpy(buf, data, size);
-	return buf+size;
-}
-
-static char *append_str(char *buf, char *data) {
-	int size = strlen(data);
-	return append_to_buf(buf, data, size);
-}
-
-int build_beacon(char *buf, struct network_t *n) {
-	char *b = buf;
-	/* prepend a minimal radiotap header */
-	memset(b, 0x00, 8);
-	b[2] = 8;
-	b += 8;
-	b = append_to_buf(b, "\x80\x00\x00\x00", 4); /* IEEE802.11 beacon frame */
-	b = append_to_buf(b, n->dst, sizeof(mac_t)); /* destination */
-	b = append_to_buf(b, n->mac, sizeof(mac_t)); /* source */
-	b = append_to_buf(b, n->mac, sizeof(mac_t)); /* BSSID */
-	/* sequence number */
-	*(b++) = n->seq >> 8;
-	*(b++) = n->seq & 0x00FF;
-	n->seq++;
-	b = append_to_buf(b, timestamp, sizeof(timestamp)); /* time stamp */
-	b = append_to_buf(b, "\x64\x00", 2); /* beacon interval */
-	b = append_to_buf(b, "\x01\x04", 2); /* capabilities */
-
-	*(b++) = 0; /* tag essid */
-	*(b++) = strlen(n->ssid);
-	b = append_str(b, n->ssid);
-
-	b = append_to_buf(b, "\x01\x01\x82", 3); /* We only support 1 MBit */
-	b = append_to_buf(b, "\x03\x01", 2); /* the channel we are curently on... */
-	*(b++) = n->channel;
-
-	/* WPA tags */
-	if (n->flags & NETWORK_FLAG_WPA) {
-		b = append_to_buf(b, "\x30", 1);
-		b = append_to_buf(b, "\x14", 1); /* tag length */
-		b = append_to_buf(b, "\x01\x00", 2); /* version */
-		b = append_to_buf(b, "\x00\x0f\xac", 3); /* cipher suite OUI */
-		b = append_to_buf(b, "\x02", 1); /* TKIP */
-		b = append_to_buf(b, "\x01\x00", 2); /* cipher suite count */
-		b = append_to_buf(b, "\x00\x0f\xac\x02", 4); /* pairwire cipher suite list */
-		b = append_to_buf(b, "\x01\x00", 2); /* auth key management suite count */
-		b = append_to_buf(b, "\x00\x0f\xac\x02", 4); /* auth key management list */
-		b = append_to_buf(b, "\x00\x00", 2); /* RSN capabilities */
-	}
-	return (b-buf);
-}
 
 void print_mac(const mac_t m) {
 	printf("%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", m[0], m[1], m[2], m[3], m[4], m[5]);
@@ -224,11 +127,11 @@ int main(int argc, char *argv[]) {
 	if (time_ssid) {
 		uint8_t flags = NETWORK_FLAG_TIME;
 		flags |= (use_wpa ? NETWORK_FLAG_WPA : 0);
-		struct network_t *n = network_add(&network_list, "", &ap_base_mac, flags);
+		struct network_t *n = network_add(&network_list, "", &ap_base_mac, &dest_mac, flags);
 		n->channel = channel;
 	}
 	for (i=0; i<netc; i++) {
-		struct network_t *n = network_add(&network_list, netp[i], &ap_base_mac, 0);
+		struct network_t *n = network_add(&network_list, netp[i], &ap_base_mac, &dest_mac, 0);
 		/* generate a MAC address */
 		n->mac[5] += (i+1);
 		if (use_wpa) {

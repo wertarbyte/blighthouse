@@ -24,9 +24,9 @@ void print_mac(const mac_t m) {
 	printf("%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", m[0], m[1], m[2], m[3], m[4], m[5]);
 }
 
-int read_mac(char *arg) {
-	int r = sscanf(arg, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", dest_mac, dest_mac+1, dest_mac+2, dest_mac+3, dest_mac+4, dest_mac+5);
-	return (r != sizeof(dest_mac));
+int read_mac(char *arg, mac_t d) {
+	int r = sscanf(arg, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &d[0], &d[1], &d[2], &d[3], &d[4], &d[5]);
+	return (r != sizeof(mac_t));
 }
 
 void get_essid(char *essid, const uint8_t *p, const size_t max_psize) {
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 	uint8_t time_ssid = 0;
 	uint8_t listen = 0;
 	int channel = 1;
-	
+
 	int c;
 	opterr = 0;
 	while ((c = getopt(argc, argv, "i:d:c:tlwv")) != -1) {
@@ -92,8 +92,8 @@ int main(int argc, char *argv[]) {
 				verbose = 1;
 				break;
 			case 'd':
-				if (read_mac(optarg)) {
-					fprintf (stderr, "Unable to parse mac address.\n", optopt);
+				if (read_mac(optarg, dest_mac)) {
+					fprintf (stderr, "Unable to parse mac address!\n");
 					return 1;
 				}
 				break;

@@ -25,6 +25,7 @@ struct network_t {
 	mac_t mac;
 	mac_t dst;
 	uint16_t seq;
+	uint8_t channel;
 	uint8_t flags;
 	struct network_t *next;
 };
@@ -97,8 +98,9 @@ int build_beacon(char *buf, struct network_t *n) {
 	b = append_str(b, n->ssid);
 
 	b = append_to_buf(b, "\x01\x01\x82", 3); /* We only support 1 MBit */
-	b = append_to_buf(b, "\x03\x01\x01", 3); /* we are on channel 1 */
-	
+	b = append_to_buf(b, "\x03\x01", 2); /* the channel we are curently on... */
+	*(b++) = n->channel;
+
 	/* WPA tags */
 	if (n->flags & NETWORK_FLAG_WPA) {
 		b = append_to_buf(b, "\x30", 1);
@@ -171,10 +173,11 @@ int main(int argc, char *argv[]) {
 	uint8_t use_wpa = 0;
 	uint8_t time_ssid = 0;
 	uint8_t listen = 0;
+	int channel = 1;
 	
 	int c;
 	opterr = 0;
-	while ((c = getopt(argc, argv, "i:d:tlwv")) != -1) {
+	while ((c = getopt(argc, argv, "i:d:c:tlwv")) != -1) {
 		switch(c) {
 			case 'i':
 				if_name = optarg;
@@ -191,6 +194,10 @@ int main(int argc, char *argv[]) {
 					return 1;
 				}
 				break;
+			case 'c':
+				sscanf(optarg, "%d", &channel);
+				printf("Advertising our presence on channel %d\n", channel);
+				break;
 			case 'l':
 				listen = 1;
 				break;
@@ -198,7 +205,7 @@ int main(int argc, char *argv[]) {
 				use_wpa = 1;
 				break;
 			case '?':
-				if (optopt == 'i' || optopt == 'd')
+				if (optopt == 'i' || optopt == 'd' || optopt == 'c')
 					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
 				else if (isprint (optopt))
 					fprintf (stderr, "Unknown option `-%c'.\n", optopt);
@@ -217,7 +224,8 @@ int main(int argc, char *argv[]) {
 	if (time_ssid) {
 		uint8_t flags = NETWORK_FLAG_TIME;
 		flags |= (use_wpa ? NETWORK_FLAG_WPA : 0);
-		network_add(&network_list, "", &ap_base_mac, flags);
+		struct network_t *n = network_add(&network_list, "", &ap_base_mac, flags);
+		n->channel = channel;
 	}
 	for (i=0; i<netc; i++) {
 		struct network_t *n = network_add(&network_list, netp[i], &ap_base_mac, 0);
@@ -226,6 +234,7 @@ int main(int argc, char *argv[]) {
 		if (use_wpa) {
 			n->flags |= NETWORK_FLAG_WPA;
 		}
+		n->channel = channel;
 	}
 	int quantity = network_count(&network_list);
 	if (!if_name || quantity < 1) {

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <string.h>
+#include <ctype.h>
 #include <time.h>
 
 #include "types.h"
@@ -78,7 +79,7 @@ int main(int argc, char *argv[]) {
 	uint8_t listen = 0;
 	int channel = 1;
 
-	int c;
+	int  c;
 	opterr = 0;
 	while ((c = getopt(argc, argv, "i:d:c:tlwv")) != -1) {
 		switch(c) {
@@ -123,14 +124,13 @@ int main(int argc, char *argv[]) {
 	int netc = argc-optind;
 	char **netp = argv+optind;
 	/* populate the data structures */
-	int i;
 	if (time_ssid) {
 		uint8_t flags = NETWORK_FLAG_TIME;
 		flags |= (use_wpa ? NETWORK_FLAG_WPA : 0);
 		struct network_t *n = network_add(&network_list, "", ap_base_mac, dest_mac, flags);
 		n->channel = channel;
 	}
-	for (i=0; i<netc; i++) {
+	for (int i=0; i<netc; i++) {
 		struct network_t *n = network_add(&network_list, netp[i], ap_base_mac, dest_mac, 0);
 		/* generate a MAC address */
 		n->mac[5] += (i+1);

@@ -69,6 +69,20 @@ void process_probe(u_char *user, const struct pcap_pkthdr *h, const uint8_t *b) 
 	}
 }
 
+void show_help(void) {
+	printf("blighthouse - misguiding wifi devices with bogus beacons\n\n");
+	printf("Usage:\n");
+	printf("\tblighthouse -i <device> [-d <destination>] [-c <channel>] [-w] [-v] [-t] [-l] names...\n\n");
+	
+	printf("-i <device>      network device to use\n");
+	printf("-d <destination> destination mac address (default: broadcast/FF:FF:FF:FF:FF:FF)\n");
+	printf("-c <channel>     channel to advertise (default: 1)\n");
+	printf("-w               add WPA headers to beacon\n");
+	printf("-v               be verbose\n");
+	printf("-t               send beacons containing the current time\n");
+	printf("-l               listen for an indicate probe requests\n");
+}
+
 int main(int argc, char *argv[]) {
 	char pcap_errbuf[PCAP_ERRBUF_SIZE];
 	pcap_errbuf[0] = '\0';
@@ -79,6 +93,10 @@ int main(int argc, char *argv[]) {
 	uint8_t listen = 0;
 	int channel = 1;
 
+	if (argc <= 1) {
+		show_help();
+		return 1;
+	}
 	int  c;
 	opterr = 0;
 	while ((c = getopt(argc, argv, "i:d:c:tlwv")) != -1) {
